@@ -2,12 +2,15 @@ import { Evolutions } from "@/models/chart";
 
 const BASE_URL = 'https://studious-dollop-vg7x6gjv9rpfwpjq-8000.app.github.dev/drivers';
 
-interface DriverData {
-    x: number | string;
-    y: number;
-    eventName: string;
+export async function getDrivers(year: number = new Date().getFullYear()) {
+  const response = await fetch(
+    `${BASE_URL}/${year}`
+  );
+  if (!response.ok) throw new Error('Failed to fetch data');
+  return {
+    data: await response.json() as any,
+  };
 }
-
 export async function getDriverStanding(year: number = new Date().getFullYear()) {
   const response = await fetch(
     `${BASE_URL}/standings-evolution/${year}`
