@@ -1,4 +1,4 @@
-import { getDriverRanking, getDriverStanding, getDriverStats } from '@/lib/api/drivers';
+import { getDriverRanking, getDriverStanding, getDriverStats, getPointsDristribution } from '@/lib/api/drivers';
 import { useQuery } from '@tanstack/react-query';
 
 export function useDrivers(year: number = new Date().getFullYear()) {
@@ -17,11 +17,17 @@ export function useDrivers(year: number = new Date().getFullYear()) {
         queryFn: () => getDriverStats(year),
     });
 
+    const driverPointsDistribution = useQuery({
+        queryKey: ['getPointsDristribution', year],
+        queryFn: () => getPointsDristribution(year),
+    });
+
     return {
         driverStanding: driverStanding.data,
         driverRanking: driverRanking.data,
         driverStats: driverStats.data,
-        isLoading: driverStanding.isLoading || driverRanking.isLoading || driverStats.isLoading,
-        error: driverStanding.error || driverRanking.isError || driverStats.isError,
+        driverPointsDistribution: driverPointsDistribution.data,
+        isLoading: driverStanding.isLoading || driverRanking.isLoading || driverStats.isLoading || driverPointsDistribution.isLoading,
+        error: driverStanding.error || driverRanking.isError || driverStats.isError || driverPointsDistribution.isError,
     };
 }

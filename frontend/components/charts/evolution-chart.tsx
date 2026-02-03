@@ -117,8 +117,8 @@ export const RankingEvolution = ({ title, rankings, mappings, type }: RankingEvo
                                 data={data}
                                 margin={
                                     title == "Drivers"
-                                        ? { top: 0, right: 40, bottom: 50, left: 22 }
-                                        : { top: 0, right: 90, bottom: 50, left: 22 }
+                                        ? { top: 0, right: 40, bottom: 20, left: 22 }
+                                        : { top: 0, right: 90, bottom: 20, left: 22 }
                                 }
                                 endLabelPadding={10}
                                 xPadding={0.6}

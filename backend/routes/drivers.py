@@ -319,6 +319,9 @@ async def get_races_ranking_evolution(year: int):
 async def get_driver_stats(year: int):
     try:
         file_path = os.path.join(RESULTS_DIR, f"stats_{year}.json")
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                return json.load(f)
         
         # Eliminamos el archivo previo para asegurar que el debug sea real y no cacheado
         if os.path.exists(file_path):
@@ -422,6 +425,69 @@ async def get_driver_stats(year: int):
             json.dump(final_data, f)
             
         return final_data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/points-distribution/{year}")
+def get_points_distribution(year: int):
+    try:
+        # Definir ruta de caché
+        file_path = os.path.join(RESULTS_DIR, f"points_dist_{year}.json")
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                return json.load(f)
+
+        schedule = fastf1.get_event_schedule(year)
+        past_events = schedule[(schedule['EventFormat'] != 'testing') & (schedule['RoundNumber'] > 0)]
+        
+        distribution_data = []
+
+        for _, event in past_events.iterrows():
+            r_num = event['RoundNumber']
+            # Limpiamos el nombre para que el eje Y no sea eterno
+            r_name = event['EventName'].replace('Grand Prix', '').strip()
+            r_locality = event['Location']
+
+            try:
+                session = fastf1.get_session(year, r_num, 'R')
+                session.load(laps=False, telemetry=False, weather=False)
+                
+                if session.results is None or session.results.empty:
+                    continue
+
+                round_entry = {
+                    "name": r_name,
+                    "locality": r_locality
+                }
+
+                # Es vital que cada piloto sea un objeto con la propiedad "points"
+                # para que tu frontend lo detecte en el flatMap
+                for _, row in session.results.iterrows():
+                    abbr = row['Abbreviation']
+                    if not abbr or pd.isna(abbr): continue
+                    
+                    round_entry[abbr] = {
+                        "name": row['FullName'],
+                        "points": float(row['Points']),
+                        "constructor": row['TeamName']
+                    }
+                
+                distribution_data.append(round_entry)
+
+            except Exception as e:
+                print(f"Error en ronda {r_num}: {e}")
+                continue
+
+        # Invertimos para que la carrera más reciente aparezca arriba (opcional)
+        distribution_data.reverse()
+
+        if distribution_data:
+            os.makedirs(RESULTS_DIR, exist_ok=True)
+            with open(file_path, 'w') as f:
+                json.dump(distribution_data, f)
+            
+        return distribution_data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

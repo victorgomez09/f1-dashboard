@@ -37,3 +37,13 @@ export async function getDriverStats(year: number = new Date().getFullYear()) {
     data: await response.json() as any,
   };
 }
+
+export async function getPointsDristribution(year: number = new Date().getFullYear()) {
+  const response = await fetch(
+    `${BASE_URL}/points-distribution/${year}`
+  );
+  if (!response.ok) throw new Error('Failed to fetch data');
+  return {
+    data: await response.json() as any,
+  };
+}
