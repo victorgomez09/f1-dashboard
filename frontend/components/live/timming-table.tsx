@@ -1,6 +1,7 @@
 "use client"
 
 import { SectorCell } from "./sector-cell";
+import { TyreStintHistory } from "./tyre-history";
 
 export const TimingTable = ({ timing }: { timing: any }) => {
     if (!timing) return <div className="p-10 text-center">Esperando datos de la sesión...</div>;
@@ -22,6 +23,8 @@ export const TimingTable = ({ timing }: { timing: any }) => {
                     <th>S2</th>
                     <th>S3</th>
                     <th>Laps</th>
+                    <th>Tyres</th>
+                    <th>Tyre history</th>
                 </tr>
             </thead>
             <tbody>
@@ -51,6 +54,22 @@ export const TimingTable = ({ timing }: { timing: any }) => {
                             isPersonalBest={line.Sectors?.[2]?.PersonalBest}
                         />
                         <td className="opacity-50">{line.NumberOfLaps}</td>
+                        <td className="text-center">
+                            {line.Stints && (
+                                <div className={`
+                            badge badge-xs font-bold border-2
+                            ${line.Stints[0].Compound === 'SOFT' ? 'border-red-600 text-red-600' : ''}
+                            ${line.Stints[0].Compound === 'MEDIUM' ? 'border-yellow-500 text-yellow-500' : ''}
+                            ${line.Stints[0].Compound === 'HARD' ? 'border-white text-white' : ''}
+                            `}>
+                                    {line.Stints[0].Compound[0]}
+                                </div>
+                            )}
+                            <span className="ml-1 text-[9px] opacity-40">{line.Stints?.[0]?.TyreAge}</span>
+                        </td>
+                        <td>
+                            <TyreStintHistory stints={line.Stints || []} />
+                        </td>
                     </tr>
                 ))}
             </tbody>
