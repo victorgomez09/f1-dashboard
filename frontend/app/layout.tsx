@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <li className={path === '/drivers' ? 'menu-active' : ''}><Link className="flex items-center gap-2" href="/drivers"><User className="size-4" />Pilotos</Link></li>
                 <li className={path === '/drivers-standing' ? 'menu-active' : ''}><Link className="flex items-center gap-2" href="/drivers-standing"><User className="size-4" />Clasificación Pilotos</Link></li>
                 <li><a className="flex items-center gap-2"><Car className="size-4" /> Constructores</a></li>
-                <li><a className="flex items-center gap-2"><Clock className="size-4" /> Telemetría en Vivo</a></li>
+                <li className={path === '/live' ? 'menu-active' : ''}><Link className="flex items-center gap-2" href="/live"><Clock className="size-4" /> Telemetría en Vivo</Link></li>
                 <li className={path === '/schedule' ? 'menu-active' : ''}><Link className="flex items-center gap-2" href="/schedule"><Calendar className="size-4" /> Calendario GP</Link></li>
 
                 <div className="mt-auto p-4 bg-base-300 rounded-xl">
