@@ -17,6 +17,11 @@ const nextConfig = {
         hostname: 'www.formula1.com',
         pathname: '**',
       },
+      {
+        protocol: 'https',
+        hostname: 'flagcdn.com',
+        pathname: '**',
+      },
     ],
   },
 };

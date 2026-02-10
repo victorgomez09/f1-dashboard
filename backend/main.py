@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import drivers, teams
+from routes import drivers, teams, schedule
 
 
 app = FastAPI()
@@ -14,3 +14,4 @@ app.add_middleware(
 
 app.include_router(drivers.router)
 app.include_router(teams.router)
+app.include_router(schedule.router)
