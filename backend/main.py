@@ -1,91 +1,39 @@
 import asyncio
-import os
-from typing import List
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.concurrency import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Importamos el simulador y el bridge
-from mocks.timming import simulate_f1_data
+from sse_starlette.sse import EventSourceResponse
 from utils.signalr import F1SignalRBridge
-from routes import drivers, teams, schedule, timming
+from utils.sse_manager import manager
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
+app = FastAPI()
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except:
-                # Si una conexión falla, la ignoramos o gestionamos aquí
-                pass
-
-manager = ConnectionManager()
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    loop = asyncio.get_running_loop()
-    mode = os.getenv("F1_MODE", "prod")
-    
-    # El bridge ahora es autónomo y llenará driver_data vía SignalR (tópico DriverList)
-    bridge = F1SignalRBridge(main_loop=loop, manager=manager)
-    
-    # Parámetros para el layout del circuito (esto sigue siendo necesario para el mapa)
-    year, loc, stype = 2025, 'Monaco', 'R'
-    
-    if mode == "dev":
-        print("🧪 MODO DESARROLLO: Iniciando simulador autónomo...")
-        from routes.timming import get_track_layout 
-        track_data = await get_track_layout(year, loc)
-        
-        # Lanzamos el simulador pasándole el diccionario de pilotos vacío 
-        # El simulador se encargará de inyectar el 'DriverList' inicial
-        asyncio.create_task(simulate_f1_data(
-            manager, 
-            bridge.driver_data, 
-            track_data
-        ))
-    else:
-        print("🏎️ MODO PRODUCCIÓN: Conectando a SignalR Hub...")
-        # En prod, bridge.start() manejará la suscripción a DriverList, TimingData, etc.
-        bridge_task = asyncio.to_thread(bridge.start)
-        asyncio.create_task(bridge_task)
-    
-    yield
-    # Limpieza al cerrar la app
-    bridge.stop()
-
-app = FastAPI(lifespan=lifespan)
-
+# CORS habilitado para que Next.js (f1-dash) pueda conectar
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.websocket("/ws/live")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            # Mantenemos la conexión viva
-            await websocket.receive_text() 
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+f1_bridge = None
 
-# Registro de routers
-app.include_router(drivers.router)
-app.include_router(teams.router)
-app.include_router(schedule.router)
-app.include_router(timming.router)
+@app.on_event("startup")
+async def startup_event():
+    global f1_bridge
+    loop = asyncio.get_event_loop()
+    f1_bridge = F1SignalRBridge(loop)
+    # Esperamos 2 segundos antes de arrancar el bridge para que el 
+    # primer cliente que conecte reciba los 'initial' del manager primero.
+    await asyncio.sleep(2) 
+    f1_bridge.start()
+
+@app.get("/api/realtime")
+async def sse_endpoint():
+    """
+    Este endpoint es el que busca el frontend en:
+    new EventSource(`${env.NEXT_PUBLIC_LIVE_URL}/api/realtime`)
+    """
+    global f1_bridge
+    # 🚩 AQUÍ: Pasamos la instancia global del bridge al manager
+    return EventSourceResponse(manager.subscribe(f1_bridge))
