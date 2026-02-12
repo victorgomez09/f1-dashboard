@@ -21,9 +21,9 @@ export default function TrackMap() {
 	const driversTiming = useDataStore((state) => state.state?.TimingData);
 
 	return (
-		<div className="flex flex-col-reverse gap-2 md:h-full md:flex-row">
-			<div className="card bg-base-300">
-				<div className="card-body p-2">
+		<div className="flex flex-col-reverse gap-2 md:h-full md:flex-row overflow-hidden">
+			<div className="card bg-base-300 overflow-hidden">
+				<div className="card-body p-2 overflow-auto">
 					{(!drivers || !driversTiming) &&
 						new Array(20).fill("").map((_, index) => <SkeletonDriver key={`driver.loading.${index}`} />)}
 
@@ -45,7 +45,7 @@ export default function TrackMap() {
 			</div>
 
 			<div className="md:flex-1">
-				<div className="card bg-base-300">
+				<div className="card bg-base-300 h-full">
 					<div className="card-body p-2">
 						<Map />
 					</div>

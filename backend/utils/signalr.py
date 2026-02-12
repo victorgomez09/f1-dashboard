@@ -91,6 +91,17 @@ class F1SignalRBridge:
                                 else:
                                     # El resto de datos (tiempos, clima) sí pueden esperar al bulk
                                     updates_to_send[topic] = content
+
+                                if topic == "SessionStatus":
+                                    status = content.get("Status")
+                                    if status in ["Stopped", "Aborted"]:
+                                        print(f"🏁 Sesión finalizada: {status}")
+                                        self.session_active = False
+                                        
+                                if topic == "TrackStatus":
+                                    track_status = content.get("Status")
+                                    if track_status == "7": # Fin de sesión
+                                        print("🏁 Bandera a cuadros detectada.")
                         
                         # Enviamos el paquete de updates agrupado una sola vez al final del ciclo
                         if updates_to_send:
