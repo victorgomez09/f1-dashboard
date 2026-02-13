@@ -12,111 +12,92 @@ class F1SignalRBridge:
         self.main_loop = main_loop
         self.base_url = "https://livetiming.formula1.com/signalr"
         self.hub_data = json.dumps([{"name": "Streaming"}])
-        self.initialized_categories = set()
         self.is_running = False
+        self.session_active = True
         self.all_topics = [
-            "Heartbeat",
-            "CarData.z",
-            "Position.z",
-            "ExtrapolatedClock",
-            "TimingStats",
-            "TimingAppData",
-            "WeatherData",
-            "TrackStatus",
-            "SessionStatus",
-            "DriverList",
-            "RaceControlMessages",
-            "SessionInfo",
-            "SessionData",
-            "LapCount",
-            "TimingData",
-            "TeamRadio",
-            "ChampionshipPrediction"
+            "Heartbeat", "CarData.z", "Position.z", "ExtrapolatedClock",
+            "TimingStats", "TimingAppData", "WeatherData", "TrackStatus",
+            "SessionStatus", "DriverList", "RaceControlMessages", "SessionInfo",
+            "SessionData", "LapCount", "TimingData", "TeamRadio", "ChampionshipPrediction"
         ]
+        
+        # 🚩 CACHE DE ESTADO: Mantiene la "foto" actual para nuevos clientes (F5)
         self.state_cache = {}
 
     def negotiate(self):
-        negotiate_url = f"{self.base_url}/negotiate?clientProtocol=1.5&connectionData={urllib.parse.quote(self.hub_data)}"
-        r = requests.get(negotiate_url, headers={"User-Agent": "Mozilla/5.0"})
-        data = r.json()
-        token = urllib.parse.quote(data['ConnectionToken'])
-        cookie = "; ".join([f"{k}={v}" for k, v in r.cookies.get_dict().items()])
-        return token, cookie
+        try:
+            negotiate_url = f"{self.base_url}/negotiate?clientProtocol=1.5&connectionData={urllib.parse.quote(self.hub_data)}"
+            r = requests.get(negotiate_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            data = r.json()
+            token = urllib.parse.quote(data['ConnectionToken'])
+            cookie = "; ".join([f"{k}={v}" for k, v in r.cookies.get_dict().items()])
+            return token, cookie
+        except Exception as e:
+            print(f"❌ Error en negociación: {e}")
+            return None, None
 
     async def start_async(self):
         self.is_running = True
+        print("🚀 Iniciando Bridge de F1 SignalR...")
+        
         try:
             token, cookie = self.negotiate()
+            if not token: raise Exception("No se pudo obtener el token de conexión")
+
             ws_url = f"wss://livetiming.formula1.com/signalr/connect?clientProtocol=1.5&transport=webSockets&connectionData={urllib.parse.quote(self.hub_data)}&connectionToken={token}"
             
             async with connect(ws_url, extra_headers={"Cookie": cookie, "User-Agent": "Mozilla/5.0"}) as ws:
-                # 1. Suscripción
+                # 1. Suscripción inicial
                 await ws.send(json.dumps({"H": "Streaming", "M": "Subscribe", "A": [self.all_topics], "I": 1}))
-                await asyncio.sleep(1)
+                await asyncio.sleep(2) 
 
-                # 2. Snapshots iniciales
-                for topic in ["SessionInfo", "DriverList", "TimingData", "WeatherData", "SessionData"]:
-                    await ws.send(json.dumps({"H": "Streaming", "M": "RequestSnapshot", "A": [topic], "I": 2}))
-                    await asyncio.sleep(0.5)
+                # 2. Solicitar Snapshots (Solo al arrancar el backend)
+                initial_topics = ["SessionInfo", "DriverList", "TimingData", "TimingAppData", "SessionData"]
+                for i, topic in enumerate(initial_topics):
+                    await ws.send(json.dumps({
+                        "H": "Streaming", 
+                        "M": "RequestSnapshot", 
+                        "A": [topic], 
+                        "I": i + 10
+                    }))
+                    await asyncio.sleep(0.3)
 
                 async for raw in ws:
                     packet = json.loads(raw)
                     
-                    # PROCESAR SNAPSHOTS (R) - Datos iniciales
                     if "R" in packet and packet["R"]:
                         res = self.decode(packet["R"]) if isinstance(packet["R"], str) else packet["R"]
-                        if isinstance(res, dict):
-                            for category, content in res.items():
-                                self.state_cache[category] = content
-                                await manager.broadcast("initial", category, content)
-
-                    # PROCESAR FEED EN VIVO (M) - Actualizaciones
-                    # Primero verificamos que 'M' exista para evitar el Error Bridge: 'M'
-                    if "M" in packet and isinstance(packet["M"], list):
-                        updates_to_send = {}
                         
+                        if isinstance(res, dict):
+                            for topic, content in res.items():
+                                # Enviamos cada tópico del snapshot individualmente
+                                await manager.broadcast("initial", topic, content)
+
+                    # Si es feed en vivo (M)
+                    if "M" in packet and isinstance(packet["M"], list):
                         for msg in packet["M"]:
                             if msg.get("M") == "feed":
                                 topic = msg["A"][0]
-                                content = msg["A"][1]
-                                if isinstance(content, str): content = self.decode(content)
-
-                                if topic in ["Position.z", "CarData.z"]:
-                                    await manager.broadcast("update", topic, content)
-
-                                if topic == "Heartbeat":
-                                    # El Heartbeat es el metrónomo. Enviarlo al instante es clave.
-                                    await manager.broadcast("update", topic, content)
-                                    continue # Saltamos al siguiente mensaje para que no entre en el bulk
-                                else:
-                                    # El resto de datos (tiempos, clima) sí pueden esperar al bulk
-                                    updates_to_send[topic] = content
-
-                                if topic == "SessionStatus":
-                                    status = content.get("Status")
-                                    if status in ["Stopped", "Aborted"]:
-                                        print(f"🏁 Sesión finalizada: {status}")
-                                        self.session_active = False
-                                        
-                                if topic == "TrackStatus":
-                                    track_status = content.get("Status")
-                                    if track_status == "7": # Fin de sesión
-                                        print("🏁 Bandera a cuadros detectada.")
-                        
-                        # Enviamos el paquete de updates agrupado una sola vez al final del ciclo
-                        if updates_to_send:
-                            await manager.broadcast_bulk("update", updates_to_send)
-
+                                content = self.decode(msg["A"][1])
+                                await manager.broadcast("update", topic, content)
+                                
         except Exception as e:
-            print(f"⚠️ Error Bridge: {e}")
+            print(f"⚠️ Error en el bucle del Bridge: {e}")
+            self.is_running = False
             await asyncio.sleep(5)
-            if self.is_running:
-                await self.start_async()
+            await self.start_async()
 
     def decode(self, payload):
+        if not payload: return None
         try:
-            return json.loads(zlib.decompress(base64.b64decode(payload), -15).decode('utf-8'))
-        except: return None
+            # SignalR usa raw DEFLATE sin cabeceras
+            decoded = base64.b64decode(payload)
+            return json.loads(zlib.decompress(decoded, -15).decode('utf-8'))
+        except Exception:
+            try:
+                return json.loads(payload) if isinstance(payload, str) else payload
+            except:
+                return None
 
     def start(self):
         asyncio.run_coroutine_threadsafe(self.start_async(), self.main_loop)

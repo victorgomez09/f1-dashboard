@@ -16,7 +16,7 @@ export default function DriverCarMetrics({ carData }: Props) {
 	const speedUnit = useSettingsStore((state) => state.speedUnit);
 
 	return (
-		<div className="flex items-center gap-2 place-self-start">
+		<div className="flex items-center gap-2">
 			<p className="flex h-8 w-8 items-center justify-center font-mono text-lg">{carData[3]}</p>
 
 			<div>

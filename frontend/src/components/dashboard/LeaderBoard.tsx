@@ -28,7 +28,7 @@ export default function LeaderBoard() {
 							.sort(sortPos)
 							.map((timingDriver, index) => (
 								<Driver
-									key={`leaderBoard.driver.${timingDriver.RacingNumber}`}
+									key={`leaderBoard.driver.${index}`}
 									position={index + 1}
 									driver={drivers[timingDriver.RacingNumber]}
 									timingDriver={timingDriver}

@@ -15,7 +15,7 @@ export default function DriverTire({ stints, totalLaps }: Props) {
 	);
 
 	return (
-		<div className="flex flex-row items-center gap-2 place-self-start">
+		<div className="flex flex-row items-center gap-2">
 			{currentStint && !unknownCompound && currentStint.Compound && (
 				<Image
 					src={"/tires/" + currentStint.Compound.toLowerCase() + ".svg"}

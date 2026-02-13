@@ -10,7 +10,7 @@ type Props = {
 
 export default function DriverLapTime({ last, best, hasFastest }: Props) {
 	return (
-		<div className="place-self-start">
+		<div>
 			<p
 				className={clsx("text-lg leading-none font-medium tabular-nums", {
 					"text-violet-600!": last?.OverallFastest,

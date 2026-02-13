@@ -23,7 +23,7 @@ export default function DriverGap({ timingDriver, sessionPart }: Props) {
 	const catching = timingDriver.IntervalToPositionAhead?.Catching;
 
 	return (
-		<div className="place-self-start">
+		<div>
 			<p
 				className={clsx("text-lg leading-none font-medium tabular-nums", {
 					"text-emerald-500": catching,

@@ -27,7 +27,7 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 					<div className={clsx("flex", showMiniSectors ? "items-center gap-1" : "flex-col")}>
 						<p
 							className={clsx("text-lg leading-none font-medium tabular-nums", {
-								"text-secondary!": sector.OverallFastest,
+								"text-primary!": sector.OverallFastest,
 								"text-success!": sector.PersonalFastest,
 								"text-neutral-content/20": !sector.Value,
 							})}
@@ -38,7 +38,7 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 						{showBestSectors && (
 							<p
 								className={clsx("text-sm leading-none text-neutral-content/20 tabular-nums", {
-									"text-secondary!": bestSectors?.[i].Position === 1,
+									"text-primary!": bestSectors?.[i].Position === 1,
 								})}
 							>
 								{bestSectors && bestSectors[i].Value ? bestSectors[i].Value : "-- ---"}

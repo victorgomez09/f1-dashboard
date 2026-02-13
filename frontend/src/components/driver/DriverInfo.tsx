@@ -27,7 +27,7 @@ export default function DriverInfo({ timingDriver, gridPos }: Props) {
 							: null;
 
 	return (
-		<div className="place-self-start">
+		<div>
 			<p
 				className={clsx("text-lg leading-none font-medium tabular-nums", {
 					"text-emerald-500": gain,

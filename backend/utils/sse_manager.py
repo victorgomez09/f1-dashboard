@@ -49,14 +49,4 @@ class SSEManager:
         for queue in self.queues:
             await queue.put(sse_dict)
 
-    async def broadcast_bulk(self, event_type: str, data_dict: dict):
-        # data_dict ya viene como {"WeatherData": {...}, "TimingData": {...}}
-        # Esto permite que el frontend procese todo en un solo ciclo de renderizado
-        sse_dict = {
-            "event": event_type,
-            "data": json.dumps(data_dict)
-        }
-        for queue in self.queues:
-            await queue.put(sse_dict)
-
 manager = SSEManager()

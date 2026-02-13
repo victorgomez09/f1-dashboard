@@ -17,7 +17,7 @@ export default function Page() {
 					</div>
 				</div>
 
-				<div className="flex-1 2xl:max-h-[50rem]">
+				<div className="flex-1 2xl:max-h-200">
 					<div className="card bg-base-300 overflow-x-auto">
 						<div className="card-body p-2">
 							<Map />
@@ -26,7 +26,7 @@ export default function Page() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-2 divide-y *:h-[30rem] *:overflow-y-auto *:rounded-box *:p-2 md:divide-y-0 lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-2 divide-y *:h-120 *:overflow-y-auto *:rounded-box *:p-2 md:divide-y-0 lg:grid-cols-3">
 				<div className="card bg-base-300 overflow-x-auto">
 					<div className="card-body p-2">
 						<RaceControl />
