@@ -3,35 +3,23 @@ import json
 
 class SSEManager:
     def __init__(self):
-        self.connections = set()
+        self.queues: set[asyncio.Queue] = set()
 
-    async def subscribe(self):
-        queue = asyncio.Queue(maxsize=1000)
-        self.connections.add(queue)
-        return queue
-
-    def unsubscribe(self, queue):
-        self.connections.discard(queue)
-
-    async def broadcast(self, event_type, topic, data):
-        if not self.connections:
-            return
-
-        payload = json.dumps({topic: data})
-        msg = f"event: {event_type}\ndata: {payload}\n\n"
-
-        tasks = [self._safe_put(q, msg) for q in list(self.connections)]
-        await asyncio.gather(*tasks)
-
-    async def send_to_queue(self, queue, event_type, topic, data):
-        payload = json.dumps({topic: data})
-        msg = f"event: {event_type}\ndata: {payload}\n\n"
-        await self._safe_put(queue, msg)
-
-    async def _safe_put(self, queue, message):
+    async def subscribe(self, bridge):
+        queue = asyncio.Queue()
+        if bridge and bridge.state_cache:
+            for topic, content in bridge.state_cache.items():
+                await queue.put({"event": "update", "data": json.dumps({topic: content})})
+                await asyncio.sleep(0.01)
+        self.queues.add(queue)
         try:
-            await queue.put(message)
-        except Exception:
-            self.unsubscribe(queue)
+            while True: yield await queue.get()
+        finally: self.queues.discard(queue)
+
+    async def broadcast(self, event_type: str, category: str, data: dict):
+        sse_dict = {"event": event_type, "data": json.dumps({category: data})}
+        for queue in list(self.queues):
+            try: queue.put_nowait(sse_dict)
+            except: continue
 
 manager = SSEManager()

@@ -12,14 +12,14 @@ export default function DriverTag({ position, teamColor, short, className }: Pro
 		<div
 			id="walkthrough-driver-position"
 			className={clsx(
-				"flex items-center justify-between gap-0.5 rounded-box p-2 font-black w-full",
+				"grid grid-cols-3 items-center font-semibold h-full w-full",
 				className,
 			)}
 		>
-			{position && <p className="p-2" style={{ backgroundColor: `#${teamColor}` }}>{position}</p>}
+			{position && <p className="flex items-center justify-center h-8 w-full rounded-l-box" style={{ backgroundColor: `#${teamColor}` }}>{position}</p>}
 
-			<div style={{ backgroundColor: `color-mix(in srgb, #${teamColor}, transparent 80%)` }}>
-				<p className="px-1">{short}</p>
+			<div className="flex items-center justify-center col-span-2 h-8 text-center rounded-r-box" style={{ backgroundColor: `color-mix(in srgb, #${teamColor}, transparent 50%)` }}>
+				<p className="w-full">{short}</p>
 			</div>
 		</div>
 	);
