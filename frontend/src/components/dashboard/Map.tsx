@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 
-import type { PositionCar, TimingDataDriver } from "@/types/state.type";
+import type { PositionCar, TimingDataDriver, Sector } from "@/types/state.type";
 import type { Map, TrackPosition } from "@/types/map.type";
 
 import { fetchMap } from "@/lib/fetchMap";
@@ -35,7 +35,10 @@ function getDriverPosition(
 	}
 
 	// Get all segments from all sectors
-	const allSegments = timingDriver.Sectors.flatMap((sector) => sector.Segments);
+	const sectors: Sector[] = Array.isArray(timingDriver.Sectors)
+		? timingDriver.Sectors
+		: Object.values(timingDriver.Sectors ?? {});
+	const allSegments = sectors.flatMap((sector) => sector.Segments);
 
 	if (allSegments.length === 0) {
 		// No segments available, position at start/finish line
@@ -51,7 +54,7 @@ function getDriverPosition(
 	// Status values: 0 = not started, 1 = in progress, 2+ = completed
 	let furthestSegmentIndex = -1;
 	for (let i = allSegments.length - 1; i >= 0; i--) {
-		const status = allSegments[i].Status;
+		const status = allSegments[i]?.Status;
 		if (status !== undefined && status > 0) {
 			furthestSegmentIndex = i;
 			break;
@@ -61,7 +64,7 @@ function getDriverPosition(
 	// If no completed segments found, check for any segment with status 0 (current segment)
 	if (furthestSegmentIndex === -1) {
 		for (let i = 0; i < allSegments.length; i++) {
-			if (allSegments[i].Status !== undefined) {
+			if (allSegments[i]?.Status !== undefined) {
 				furthestSegmentIndex = i;
 				break;
 			}

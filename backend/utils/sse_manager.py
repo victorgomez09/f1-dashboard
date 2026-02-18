@@ -3,50 +3,35 @@ import json
 
 class SSEManager:
     def __init__(self):
-        self.queues: set[asyncio.Queue] = set()
+        self.connections = set()
 
-    async def subscribe(self, bridge):
-        queue = asyncio.Queue()
+    async def subscribe(self):
+        queue = asyncio.Queue(maxsize=1000)
+        self.connections.add(queue)
+        return queue
 
-        if bridge and hasattr(bridge, 'state_cache'):
-            # 1. DEFINIMOS EL ORDEN DE PRIORIDAD
-            # Primero lo estructural para que los componentes no den error de 'undefined'
-            priority_order = ["SessionInfo", "DriverList", "SessionData", "TimingData"]
-            
-            # Enviamos primero lo prioritario
-            for category in priority_order:
-                if category in bridge.state_cache:
-                    content = bridge.state_cache[category]
-                    payload = {category: content}
-                    await queue.put({
-                        "event": "initial",
-                        "data": json.dumps(payload)
-                    })
+    def unsubscribe(self, queue):
+        self.connections.discard(queue)
 
-            # 2. Enviamos el resto de categorías que estén en caché
-            for category, content in bridge.state_cache.items():
-                if category not in priority_order:
-                    payload = {category: content}
-                    await queue.put({
-                        "event": "update",
-                        "data": json.dumps(payload)
-                    })
+    async def broadcast(self, event_type, topic, data):
+        if not self.connections:
+            return
 
-        self.queues.add(queue)
+        payload = json.dumps({topic: data})
+        msg = f"event: {event_type}\ndata: {payload}\n\n"
+
+        tasks = [self._safe_put(q, msg) for q in list(self.connections)]
+        await asyncio.gather(*tasks)
+
+    async def send_to_queue(self, queue, event_type, topic, data):
+        payload = json.dumps({topic: data})
+        msg = f"event: {event_type}\ndata: {payload}\n\n"
+        await self._safe_put(queue, msg)
+
+    async def _safe_put(self, queue, message):
         try:
-            while True:
-                yield await queue.get()
-        finally:
-            self.queues.remove(queue)
-
-    async def broadcast(self, event_type: str, category: str, data: dict):
-        payload = {category: data}
-        
-        sse_dict = {
-            "event": event_type,
-            "data": json.dumps(payload)
-        }
-        for queue in self.queues:
-            await queue.put(sse_dict)
+            await queue.put(message)
+        except Exception:
+            self.unsubscribe(queue)
 
 manager = SSEManager()

@@ -1,13 +1,13 @@
 import asyncio
-from fastapi import FastAPI
+from typing import Optional
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sse_starlette.sse import EventSourceResponse
+from fastapi.responses import StreamingResponse
 from utils.signalr import F1SignalRBridge
 from utils.sse_manager import manager
 
 app = FastAPI()
 
-# CORS habilitado para que Next.js (f1-dash) pueda conectar
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,24 +16,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-f1_bridge = None
+f1_bridge: Optional[F1SignalRBridge] = None
 
 @app.on_event("startup")
 async def startup_event():
     global f1_bridge
     loop = asyncio.get_event_loop()
     f1_bridge = F1SignalRBridge(loop)
-    # Esperamos 2 segundos antes de arrancar el bridge para que el 
-    # primer cliente que conecte reciba los 'initial' del manager primero.
-    await asyncio.sleep(2) 
     f1_bridge.start()
 
 @app.get("/api/realtime")
-async def sse_endpoint():
-    """
-    Este endpoint es el que busca el frontend en:
-    new EventSource(`${env.NEXT_PUBLIC_LIVE_URL}/api/realtime`)
-    """
-    global f1_bridge
-    # 🚩 AQUÍ: Pasamos la instancia global del bridge al manager
-    return EventSourceResponse(manager.subscribe(f1_bridge))
+async def sse_endpoint(request: Request):
+    queue = await manager.subscribe()
+
+    # 🔹 handshake snapshot determinista
+    if f1_bridge:
+        await f1_bridge.sync_client(queue)
+
+    async def event_generator():
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                yield await queue.get()
+        finally:
+            manager.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )

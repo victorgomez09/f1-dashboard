@@ -1,6 +1,6 @@
 import clsx from "clsx";
 
-import type { TimingDataDriver, TimingStatsDriver } from "@/types/state.type";
+import type { Sector, TimingDataDriver, TimingStatsDriver } from "@/types/state.type";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 
 type Props = {
@@ -12,13 +12,24 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 	const showMiniSectors = useSettingsStore((state) => state.showMiniSectors);
 	const showBestSectors = useSettingsStore((state) => state.showBestSectors);
 
+	const sectorsArray: Sector[] = Array.isArray(sectors)
+		? sectors
+		: Object.values(sectors ?? {});
+
+
+	const handleSegments = (sector: Sector): Sector["Segments"] => {
+		return Array.isArray(sector.Segments)
+			? sector.Segments
+			: Object.values(sector.Segments ?? {});
+	}
+
 	return (
 		<div className="flex gap-2">
-			{sectors?.map((sector, i) => (
+			{sectorsArray?.map((sector, i) => (
 				<div key={`sector.${i}`} className="flex flex-col gap-1">
 					{showMiniSectors && (
 						<div className="flex flex-row gap-1">
-							{sector.Segments.map((segment, j) => (
+							{handleSegments(sector).map((segment, j) => (
 								<MiniSector status={segment.Status} key={`sector.mini.${j}`} />
 							))}
 						</div>
@@ -38,10 +49,10 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 						{showBestSectors && (
 							<p
 								className={clsx("text-sm leading-none text-neutral-content/20 tabular-nums", {
-									"text-primary!": bestSectors?.[i].Position === 1,
+									"text-primary!": bestSectors?.[i]?.Position === 1,
 								})}
 							>
-								{bestSectors && bestSectors[i].Value ? bestSectors[i].Value : "-- ---"}
+								{bestSectors && bestSectors[i]?.Value ? bestSectors[i].Value : "-- ---"}
 							</p>
 						)}
 					</div>
