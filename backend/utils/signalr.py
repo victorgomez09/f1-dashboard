@@ -22,9 +22,19 @@ class F1SignalRBridge:
         ]
 
     def _clean_value(self, value):
-        """Evita que los 'NaN' o vacíos rompan el frontend"""
-        if value in [None, "NaN", "nan", "null"]: return ""
+        """Convierte basura de la F1 en valores seguros para el frontend"""
+        if value in [None, "NaN", "nan", "null", "N/A"]:
+            return ""
         return value
+
+    def _recursive_clean(self, data):
+        """Recorre el diccionario y limpia todos los 'NaN'"""
+        if isinstance(data, dict):
+            return {k: self._recursive_clean(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._recursive_clean(i) for i in data]
+        else:
+            return self._clean_value(data)
 
     def _ensure_list(self, data, default_size=0):
         if isinstance(data, list): return data
@@ -61,6 +71,9 @@ class F1SignalRBridge:
     def _update_cache(self, topic, content):
         if content is None: return
         
+        # 1. Limpieza recursiva de NaN en cualquier tópico
+        content = self._recursive_clean(content)
+
         # Normalización agresiva
         if topic == "TimingAppData":
             content = self._normalize_timing_app_data(content)
@@ -68,8 +81,18 @@ class F1SignalRBridge:
             if "Lines" in content:
                 for d_id in content["Lines"]:
                     line = content["Lines"][d_id]
+                    if "Stints" not in line and d_id in self.state_cache.get(topic, {}).get("Lines", {}):
+                        # No hacemos nada, permitimos que deep_merge mantenga el valor previo
+                        pass
                     if "Sectors" in line:
-                        line["Sectors"] = self._ensure_list(line["Sectors"], 3)
+                        cached_driver = self.state_cache.get(topic, {}).get("Lines", {}).get(d_id, {})
+                        for i, new_sector in enumerate(line["Sectors"]):
+                            # Si el nuevo dato trae un tiempo ("Value"), pero no trae segmentos,
+                            # significa que los segmentos del caché son viejos y hay que borrarlos.
+                            if new_sector.get("Value") and "Segments" not in new_sector:
+                                # Limpiamos los segmentos viejos en el caché antes del merge
+                                if "Sectors" in cached_driver and len(cached_driver["Sectors"]) > i:
+                                    cached_driver["Sectors"][i]["Segments"] = []
                     # Limpiar tiempos de vuelta NaN
                     for key in ["LastLapTime", "BestLapTime"]:
                         if key in line and isinstance(line[key], dict):

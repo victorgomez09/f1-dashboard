@@ -12,20 +12,17 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 	const showMiniSectors = useSettingsStore((state) => state.showMiniSectors);
 	const showBestSectors = useSettingsStore((state) => state.showBestSectors);
 
-	const sectorsArray: Sector[] = Array.isArray(sectors)
-		? sectors
-		: Object.values(sectors ?? {});
-
-
 	const handleSegments = (sector: Sector): Sector["Segments"] => {
+		if (!sector) return [];
+		
 		return Array.isArray(sector.Segments)
 			? sector.Segments
-			: Object.values(sector.Segments ?? {});
+			: Object.values(sector.Segments ?? []);
 	}
 
 	return (
 		<div className="flex gap-2">
-			{sectorsArray?.map((sector, i) => (
+			{sectors?.map((sector, i) => (
 				<div key={`sector.${i}`} className="flex flex-col gap-1">
 					{showMiniSectors && (
 						<div className="flex flex-row gap-1">
@@ -38,12 +35,12 @@ export default function DriverMiniSectors({ sectors = [], bestSectors }: Props) 
 					<div className={clsx("flex", showMiniSectors ? "items-center gap-1" : "flex-col")}>
 						<p
 							className={clsx("text-lg leading-none font-medium tabular-nums", {
-								"text-primary!": sector.OverallFastest,
-								"text-success!": sector.PersonalFastest,
-								"text-neutral-content/20": !sector.Value,
+								"text-primary!": sector?.OverallFastest,
+								"text-success!": sector?.PersonalFastest,
+								"text-neutral-content/20": !sector?.Value,
 							})}
 						>
-							{!!sector.Value ? sector.Value : !!sector.PreviousValue ? sector.PreviousValue : "-- ---"}
+							{!!sector?.Value ? sector.Value : !!sector?.PreviousValue ? sector.PreviousValue : "-- ---"}
 						</p>
 
 						{showBestSectors && (

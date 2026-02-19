@@ -27,3 +27,11 @@
 		opacity: 0;
 	}
 }
+
+.grid-stack-item-content {
+  @apply rounded-box; /* Si usas DaisyUI */
+}
+
+.ui-resizable-handle {
+  filter: brightness(0.5); /* Hace los handles menos intrusivos */
+}

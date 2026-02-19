@@ -70,7 +70,8 @@ export const createSectors = (map: Map): MapSector[] => {
 };
 
 export const findYellowSectors = (messages: Message[] | undefined): Set<number> => {
-	const msgs = messages?.sort(sortUtc).filter((msg) => {
+	const msgsArray = Array.isArray(messages) ? messages : Object.values(messages ?? []);
+	const msgs = msgsArray.sort(sortUtc).filter((msg) => {
 		return msg.Flag === "YELLOW" || msg.Flag === "DOUBLE YELLOW" || msg.Flag === "CLEAR";
 	});
 

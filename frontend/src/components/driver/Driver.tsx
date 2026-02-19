@@ -5,17 +5,17 @@ import { motion } from "motion/react";
 
 import type { Driver, TimingDataDriver } from "@/types/state.type";
 
-import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useDataStore } from "@/stores/useDataStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 
-import DriverTag from "./DriverTag";
-import DriverDRS from "./DriverPit";
-import DriverGap from "./DriverGap";
-import DriverTire from "./DriverTire";
-import DriverMiniSectors from "./DriverMiniSectors";
-import DriverLapTime from "./DriverLapTime";
-import DriverInfo from "./DriverInfo";
 import DriverCarMetrics from "./DriverCarMetrics";
+import DriverGap from "./DriverGap";
+import DriverInfo from "./DriverInfo";
+import DriverLapTime from "./DriverLapTime";
+import DriverMiniSectors from "./DriverMiniSectors";
+import DriverPit from "./DriverPit";
+import DriverTag from "./DriverTag";
+import DriverTire from "./DriverTire";
 
 type Props = {
 	position: number;
@@ -71,7 +71,7 @@ export default function Driver({ driver, timingDriver, position }: Props) {
 				}}
 			>
 				<DriverTag className="min-w-full!" short={driver?.Tla} teamColor={driver?.TeamColour} position={position} />
-				<DriverDRS
+				<DriverPit
 					on={carData ? hasDRS(carData[45]) : false}
 					possible={carData ? possibleDRS(carData[45]) : false}
 					inPit={timingDriver.InPit}

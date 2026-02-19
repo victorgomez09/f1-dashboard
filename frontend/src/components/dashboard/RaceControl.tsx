@@ -19,6 +19,8 @@ export default function RaceControl() {
 	const chimeRef = useRef<HTMLAudioElement | null>(null);
 	const pastMessageTimestamps = useRef<string[] | null>(null);
 
+	const msgsArray = Array.isArray(messages) ? messages : Object.values(messages ?? []);
+
 	useEffect(() => {
 		if (typeof window !== "undefined") {
 			const chime = new Audio("/sounds/chime.mp3");
@@ -38,17 +40,17 @@ export default function RaceControl() {
 		if (messages === undefined || messages === null) return;
 
 		if (!pastMessageTimestamps.current) {
-			pastMessageTimestamps.current = messages.map((msg) => msg.Utc);
+			pastMessageTimestamps.current = msgsArray.map((msg) => msg.Utc);
 			return;
 		}
 
-		const newMessages = messages.filter((msg) => !pastMessageTimestamps.current?.includes(msg.Utc));
+		const newMessages = msgsArray.filter((msg) => !pastMessageTimestamps.current?.includes(msg.Utc));
 
 		if (newMessages.length > 0 && raceControlChime) {
 			chimeRef.current?.play();
 		}
 
-		pastMessageTimestamps.current = messages.map((msg) => msg.Utc);
+		pastMessageTimestamps.current = msgsArray.map((msg) => msg.Utc);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [messages]);
 
@@ -59,7 +61,7 @@ export default function RaceControl() {
 
 			{messages && gmtOffset && (
 				<AnimatePresence>
-					{messages
+					{msgsArray
 						.sort(sortUtc)
 						.filter((msg) => (msg.Flag ? msg.Flag.toLowerCase() !== "blue" : true))
 						.map((msg, i) => (
