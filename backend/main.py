@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sse_starlette import EventSourceResponse
 from utils.signalr import F1SignalRBridge
 from utils.sse_manager import manager
@@ -27,5 +28,13 @@ async def startup_event():
 
 @app.get("/api/realtime")
 async def sse_endpoint():
-    global f1_bridge
-    return EventSourceResponse(manager.subscribe(f1_bridge))
+    return StreamingResponse(
+        manager.subscribe(f1_bridge),
+        media_type="text/event-stream",
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform", # Evita proxies
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no", # 🚩 ESTO DESACTIVA EL BUFFER DE NGINX/PROXIES
+        }
+    )

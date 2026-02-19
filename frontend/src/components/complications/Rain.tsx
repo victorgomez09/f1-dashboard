@@ -9,11 +9,11 @@ type Props = {
 
 export default function RainComplication({ rain }: Props) {
 	return (
-		<div className="relative flex h-[55px] w-[55px] items-center justify-center rounded-full bg-black">
+		<div className="relative flex h-13.75 w-13.75 items-center justify-center rounded-full bg-black">
 			{rain ? (
-				<Image src={rainIcon} alt="rain" className="h-[25px] w-auto" />
+				<Image src={rainIcon} alt="rain" className="h-6.25 w-auto" />
 			) : (
-				<Image src={noRainIcon} alt="no rain" className="h-[25px] w-auto" />
+				<Image src={noRainIcon} alt="no rain" className="h-6.25 w-auto" />
 			)}
 		</div>
 	);

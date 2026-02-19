@@ -8,16 +8,19 @@ type DataStore = {
 	state: State | null;
 	carsData: CarsData | null;
 	positions: Positions | null;
+	segmentsConfig: number[] | null;
 
 	setState: (state: Partial<State> | null) => void;
 	setCarsData: (carsData: CarsData | null) => void;
 	setPositions: (positions: Positions | null) => void;
+	setSegmentsConfig: (config: number[] | null) => void; 
 };
 
 export const useDataStore = create<DataStore>((set) => ({
 	state: null,
 	carsData: null,
 	positions: null,
+	segmentsConfig: [8, 8, 8],
 
 	setState: (partialState: Partial<State> | null) =>
 		set((prev) => ({
@@ -31,4 +34,5 @@ export const useDataStore = create<DataStore>((set) => ({
 		})),
 	setCarsData: (carsData: CarsData | null) => set({ carsData }),
 	setPositions: (positions: Positions | null) => set({ positions }),
+	setSegmentsConfig: (segmentsConfig: number[] | null) => set({ segmentsConfig }),
 }));

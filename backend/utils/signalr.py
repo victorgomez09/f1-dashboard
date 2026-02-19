@@ -4,6 +4,7 @@ import json
 import zlib
 import urllib.parse
 import requests
+import traceback
 from websockets.client import connect
 from utils.sse_manager import manager
 
@@ -14,27 +15,25 @@ class F1SignalRBridge:
         self.hub_data = json.dumps([{"name": "Streaming"}])
         self.is_running = False
         self.state_cache = {}
+        self.initialized_topics = set()
         self.all_topics = [
             "Heartbeat", "CarData.z", "Position.z", "ExtrapolatedClock",
             "TimingStats", "TimingAppData", "WeatherData", "TrackStatus",
             "SessionStatus", "DriverList", "RaceControlMessages", "SessionInfo",
             "SessionData", "LapCount", "TimingData", "TeamRadio"
         ]
+        self.segments_map = [8, 8, 8]
 
     def _clean_value(self, value):
-        """Convierte basura de la F1 en valores seguros para el frontend"""
-        if value in [None, "NaN", "nan", "null", "N/A"]:
-            return ""
+        if value in [None, "NaN", "nan", "null", "N/A"]: return ""
         return value
 
     def _recursive_clean(self, data):
-        """Recorre el diccionario y limpia todos los 'NaN'"""
         if isinstance(data, dict):
             return {k: self._recursive_clean(v) for k, v in data.items()}
         elif isinstance(data, list):
             return [self._recursive_clean(i) for i in data]
-        else:
-            return self._clean_value(data)
+        else: return self._clean_value(data)
 
     def _ensure_list(self, data, default_size=0):
         if isinstance(data, list): return data
@@ -44,82 +43,67 @@ class F1SignalRBridge:
             if not keys: return []
             max_idx = max(keys)
             new_list = [None] * (max(max_idx + 1, default_size))
-            for k, v in data.items():
-                new_list[int(k)] = v
+            for k, v in data.items(): new_list[int(k)] = v
             return new_list
         except: return []
 
-    def _normalize_timing_app_data(self, content):
-        if "Lines" not in content: return content
-        for driver_id in content["Lines"]:
-            driver_data = content["Lines"][driver_id]
-            if "Sectors" in driver_data:
-                raw_sectors = self._ensure_list(driver_data["Sectors"], 3)
-                normalized_sectors = []
-                for s_data in raw_sectors:
-                    if s_data is None:
-                        normalized_sectors.append({"Segments": [], "Value": ""})
-                    else:
-                        if "Segments" in s_data:
-                            s_data["Segments"] = self._ensure_list(s_data["Segments"])
-                        if "Value" in s_data:
-                            s_data["Value"] = self._clean_value(s_data["Value"])
-                        normalized_sectors.append(s_data)
-                driver_data["Sectors"] = normalized_sectors
-        return content
-
     def _update_cache(self, topic, content):
         if content is None: return
-        
-        # 1. Limpieza recursiva de NaN en cualquier tópico
         content = self._recursive_clean(content)
+        
+        if topic not in self.state_cache: self.state_cache[topic] = {}
 
-        # Normalización agresiva
-        if topic == "TimingAppData":
-            content = self._normalize_timing_app_data(content)
-        elif topic == "TimingData":
-            if "Lines" in content:
-                for d_id in content["Lines"]:
-                    line = content["Lines"][d_id]
-                    if "Stints" not in line and d_id in self.state_cache.get(topic, {}).get("Lines", {}):
-                        # No hacemos nada, permitimos que deep_merge mantenga el valor previo
-                        pass
-                    if "Sectors" in line:
-                        cached_driver = self.state_cache.get(topic, {}).get("Lines", {}).get(d_id, {})
-                        for i, new_sector in enumerate(line["Sectors"]):
-                            # Si el nuevo dato trae un tiempo ("Value"), pero no trae segmentos,
-                            # significa que los segmentos del caché son viejos y hay que borrarlos.
-                            if new_sector.get("Value") and "Segments" not in new_sector:
-                                # Limpiamos los segmentos viejos en el caché antes del merge
-                                if "Sectors" in cached_driver and len(cached_driver["Sectors"]) > i:
-                                    cached_driver["Sectors"][i]["Segments"] = []
-                    # Limpiar tiempos de vuelta NaN
-                    for key in ["LastLapTime", "BestLapTime"]:
-                        if key in line and isinstance(line[key], dict):
-                            line[key]["Value"] = self._clean_value(line[key].get("Value"))
+        # Si es un snapshot inicial de TimingData, nos aseguramos de que tenga estructura
+        if topic == "TimingData" and "Lines" in content:
+            for d_id, line in content["Lines"].items():
+                if "Sectors" in line:
+                    # Convertimos a lista para que el orden sea correcto
+                    line["Sectors"] = self._ensure_list(line["Sectors"])
+                    for sector in line["Sectors"]:
+                        if isinstance(sector, dict) and "Segments" not in sector:
+                            # Si no hay segmentos, inicializamos como array vacío 
+                            # para que no sea 'None' y rompa el front
+                            sector["Segments"] = []
 
-        if topic not in self.state_cache or not isinstance(content, dict):
-            self.state_cache[topic] = content
-        else:
-            self._deep_merge(self.state_cache[topic], content)
+        self._deep_merge(self.state_cache[topic], content)
+
+    def _merge_segments_only(self, target_driver, app_sectors):
+        """Inyecta micro-sectores de AppData en TimingData sin pisotear tiempos."""
+        if "Sectors" not in target_driver: return
+        target_sectors = target_driver["Sectors"]
+        app_sectors = self._ensure_list(app_sectors)
+        
+        for i, app_s in enumerate(app_sectors):
+            if i < len(target_sectors) and isinstance(app_s, dict) and "Segments" in app_s:
+                if isinstance(target_sectors[i], dict):
+                    # Solo actualizamos los segmentos, preservamos el resto (Value, etc)
+                    target_sectors[i]["Segments"] = app_s["Segments"]
 
     def _deep_merge(self, target, source):
         for k, v in source.items():
-            # Si el valor de la fuente es "" o None, y ya teníamos algo, 
-            # decidimos si sobreescribir para evitar el 'NaN'
-            if v == "" or v is None:
-                target[k] = "" # Forzamos vacío en lugar de mantener basura
-                continue
-
-            if k in target and isinstance(target[k], list) and isinstance(v, list):
+            # Caso especial: Sectores y sus tiempos/micro-sectores
+            if k == "Sectors" and isinstance(v, list) and k in target:
                 for i in range(len(v)):
-                    if i < len(target[k]):
-                        if v[i] is not None:
-                            if isinstance(v[i], dict) and isinstance(target[k][i], dict):
-                                self._deep_merge(target[k][i], v[i])
-                            else: target[k][i] = v[i]
-                    else: target[k].append(v[i])
-            elif isinstance(v, dict) and k in target and isinstance(target[k], dict):
+                    if i < len(target[k]) and isinstance(v[i], dict) and isinstance(target[k][i], dict):
+                        
+                        # PROTECCIÓN DE SEGMENTOS (Ya la teníamos)
+                        if "Segments" not in v[i] and "Segments" in target[k][i]:
+                            v[i]["Segments"] = target[k][i]["Segments"]
+                        
+                        # --- NUEVA PROTECCIÓN DE TIEMPOS ---
+                        # Si el nuevo valor 'Value' es nulo o vacío, pero en la caché ya hay un tiempo,
+                        # NO permitimos que se borre. Mantenemos el de la caché.
+                        new_val = v[i].get("Value")
+                        old_val = target[k][i].get("Value")
+                        
+                        if (not new_val or new_val in ["", "-- ---", None]) and old_val:
+                            v[i]["Value"] = old_val
+
+                        target[k][i].update(v[i])
+                    elif i >= len(target[k]):
+                        target[k].append(v[i])
+            
+            elif k in target and isinstance(target[k], dict) and isinstance(v, dict):
                 self._deep_merge(target[k], v)
             else:
                 target[k] = v
@@ -127,11 +111,30 @@ class F1SignalRBridge:
     def negotiate(self):
         try:
             neg_url = f"{self.base_url}/negotiate?clientProtocol=1.5&connectionData={urllib.parse.quote(self.hub_data)}"
-            r = requests.get(neg_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            r = requests.get(neg_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
             data = r.json()
-            return urllib.parse.quote(data['ConnectionToken']), "; ".join([f"{k}={v}" for k, v in r.cookies.get_dict().items()])
-        except Exception as e:
-            print(f"❌ Negociación: {e}"); return None, None
+            return data['ConnectionToken'], "; ".join([f"{k}={v}" for k, v in r.cookies.get_dict().items()])
+        except: return None, None
+
+    def decode(self, payload):
+        if not payload: 
+            return None
+        
+        # 1. Intentar como JSON puro (algunas respuestas R vienen así)
+        if isinstance(payload, dict):
+            return payload
+        
+        try:
+            # 2. Intentar descompresión zlib (Formato estándar .z)
+            decoded = zlib.decompress(base64.b64decode(payload), -15).decode('utf-8')
+            return json.loads(decoded)
+        except Exception:
+            try:
+                # 3. Intentar cargar como string JSON directo si no es base64
+                return json.loads(payload)
+            except Exception:
+                # print(f"❌ Error decodificando: {payload[:50]}...")
+                return None
 
     async def start_async(self):
         self.is_running = True
@@ -139,38 +142,56 @@ class F1SignalRBridge:
             try:
                 token, cookie = self.negotiate()
                 if not token: await asyncio.sleep(5); continue
-                ws_url = f"wss://livetiming.formula1.com/signalr/connect?clientProtocol=1.5&transport=webSockets&connectionData={urllib.parse.quote(self.hub_data)}&connectionToken={token}"
+                
+                ws_url = f"wss://livetiming.formula1.com/signalr/connect?clientProtocol=1.5&transport=webSockets&connectionData={urllib.parse.quote(self.hub_data)}&connectionToken={urllib.parse.quote(token)}"
                 
                 async with connect(ws_url, extra_headers={"Cookie": cookie, "User-Agent": "Mozilla/5.0"}) as ws:
-                    print("🏁 Bridge F1 Corregido y Limpiando NaN")
+                    print("🏁 Bridge F1: Conectado")
+                    
+                    # 1. Suscribirse
                     await ws.send(json.dumps({"H": "Streaming", "M": "Subscribe", "A": [self.all_topics], "I": 1}))
                     
-                    for i, topic in enumerate(["SessionInfo", "DriverList", "TimingData", "TimingAppData"]):
-                        await ws.send(json.dumps({"H": "Streaming", "M": "RequestSnapshot", "A": [topic], "I": i + 10}))
-                        await asyncio.sleep(0.3)
+                    # 2. SNAPSHOTS (Cambiado a 'ProcessHubMessage')
+                    for i, t in enumerate(["SessionInfo", "DriverList", "TimingData", "TimingAppData"]):
+                        # El protocolo actual de la F1 espera esto:
+                        await ws.send(json.dumps({
+                            "H": "Streaming", 
+                            "M": "ProcessHubMessage", 
+                            "A": ["RequestSnapshot", t], 
+                            "I": i + 10
+                        }))
 
                     async for raw in ws:
                         packet = json.loads(raw)
+                        if not packet: continue
+
+                        # CASO R: Ahora sí debería llegar la respuesta del snapshot
                         if "R" in packet and packet["R"]:
                             res = self.decode(packet["R"])
                             if isinstance(res, dict):
                                 for t, c in res.items():
                                     self._update_cache(t, c)
+                                    self.initialized_topics.add(t)
+                                    print(f"✅ Snapshot OK: {t}")
                                     await manager.broadcast("initial", t, self.state_cache[t])
+
+                        # CASO M: Feed normal
                         if "M" in packet and isinstance(packet["M"], list):
                             for msg in packet["M"]:
-                                if msg.get("M") == "feed":
+                                if isinstance(msg, dict) and msg.get("M") == "feed":
                                     t, c = msg["A"][0], self.decode(msg["A"][1])
-                                    if c:
-                                        self._update_cache(t, c)
+                                    if not c: continue
+                                    
+                                    self._update_cache(t, c)
+                                    if t not in self.initialized_topics:
+                                        self.initialized_topics.add(t)
+                                        await manager.broadcast("initial", t, self.state_cache[t])
+                                    else:
                                         await manager.broadcast("update", t, c)
-            except Exception as e:
-                print(f"⚠️ Error: {e}"); await asyncio.sleep(5)
-
-    def decode(self, payload):
-        if not payload: return None
-        try: return json.loads(zlib.decompress(base64.b64decode(payload), -15).decode('utf-8'))
-        except: return payload if not isinstance(payload, str) else None
+                                        
+            except Exception:
+                print(f"⚠️ Error: {traceback.format_exc()}")
+                await asyncio.sleep(5)
 
     def start(self):
         asyncio.run_coroutine_threadsafe(self.start_async(), self.main_loop)

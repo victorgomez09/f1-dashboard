@@ -6,6 +6,7 @@ type Fns = {
 	updateState: (state: State) => void;
 	updatePosition: (pos: Positions) => void;
 	updateCarData: (car: CarsData) => void;
+	updateSegmentsConfig: (config: number[]) => void;
 };
 
 export const useStores = (): Fns => {
@@ -15,5 +16,6 @@ export const useStores = (): Fns => {
 		updateState: (v) => dataStore.setState(v),
 		updatePosition: (v) => dataStore.setPositions(v),
 		updateCarData: (v) => dataStore.setCarsData(v),
+		updateSegmentsConfig: (v) => dataStore.setSegmentsConfig(v)
 	};
 };

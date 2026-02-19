@@ -27,8 +27,8 @@ type Props = {
 
 export default function DashboardLayout({ children }: Props) {
 	const stores = useStores();
-	const { handleInitial, handleUpdate, maxDelay } = useDataEngine(stores);
-	const { connected } = useSocket({ handleInitial, handleUpdate });
+	const { handleInitial, handleUpdate, maxDelay, handleMeta } = useDataEngine(stores);
+	const { connected } = useSocket({ handleInitial, handleUpdate, handleMeta });
 
 	const delay = useSettingsStore((state) => state.delay);
 	const syncing = delay > maxDelay;

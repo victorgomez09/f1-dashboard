@@ -16,13 +16,11 @@ export default function Page() {
   useEffect(() => {
     if (!gridRef.current) return;
 
-    // Inicializar GridStack con la nueva API de opciones
     const grid = GridStack.init({
       cellHeight: "auto",
       margin: 5,
       animate: true,
       float: true,
-      // En lugar de disableOneColumnMode, configuramos las opciones de columna
       columnOpts: {
         breakpoints: [{ w: 768, c: 1 }], // Cambia a 1 columna solo si es menor a 768px
       },

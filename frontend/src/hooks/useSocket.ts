@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 
-import type { MessageInitial, MessageUpdate } from "@/types/message.type";
+import type { MessageInitial, MessageMeta, MessageUpdate } from "@/types/message.type";
 
 import { env } from "@/env";
 
 type Props = {
 	handleInitial: (data: MessageInitial) => void;
 	handleUpdate: (data: MessageUpdate) => void;
+	handleMeta: (data: MessageMeta) => void;
 };
 
-export const useSocket = ({ handleInitial, handleUpdate }: Props) => {
+export const useSocket = ({ handleInitial, handleUpdate, handleMeta }: Props) => {
 	const [connected, setConnected] = useState<boolean>(false);
 
 	useEffect(() => {
@@ -24,6 +25,11 @@ export const useSocket = ({ handleInitial, handleUpdate }: Props) => {
 
 		sse.addEventListener("update", (message) => {
 			handleUpdate(JSON.parse(message.data));
+		});
+
+		sse.addEventListener("meta", (e) => {
+			const payload = JSON.parse(e.data);
+			handleMeta(payload);
 		});
 
 		return () => sse.close();

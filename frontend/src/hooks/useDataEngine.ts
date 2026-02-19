@@ -19,9 +19,10 @@ type Props = {
 	updateState: (state: State) => void;
 	updatePosition: (pos: Positions) => void;
 	updateCarData: (car: CarsData) => void;
+	updateSegmentsConfig: (config: number[]) => void;
 };
 
-export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Props) => {
+export const useDataEngine = ({ updateState, updatePosition, updateCarData, updateSegmentsConfig }: Props) => {
 	const buffers = {
 		ExtrapolatedClock: useStatefulBuffer(),
 		TopThree: useStatefulBuffer(),
@@ -56,7 +57,6 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
 	const handleInitial = ({ CarDataZ: carZ, PositionZ: posZ, ...initial }: MessageInitial) => {
-		console.log("handleInitial", initial)
 		updateState(initial);
 
 		Object.keys(buffers).forEach((key) => {
@@ -82,6 +82,7 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 				posBuffer.pushTimed(entry.Entries, utcToLocalMs(entry.Timestamp));
 			}
 		}
+
 	};
 
 	const handleUpdate = ({ CarDataZ: carZ, PositionZ: posZ, ...update }: MessageUpdate) => {
@@ -171,9 +172,16 @@ export const useDataEngine = ({ updateState, updatePosition, updateCarData }: Pr
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
+	const handleMeta = (message: any) => {
+		if (message.category === "SegmentsConfig") {
+			updateSegmentsConfig(message.data);
+		}
+	};
+
 	return {
 		handleUpdate,
 		handleInitial,
 		maxDelay,
+		handleMeta
 	};
 };

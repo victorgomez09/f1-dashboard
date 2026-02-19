@@ -16,3 +16,8 @@ type FullState = State & {
 export type MessageUpdate = RecursivePartial<FullState>;
 
 export type MessageInitial = FullState;
+
+export type MessageMeta = {
+    category: "SegmentsConfig";
+    data: number[];
+};

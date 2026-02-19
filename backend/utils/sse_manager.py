@@ -6,20 +6,45 @@ class SSEManager:
         self.queues: set[asyncio.Queue] = set()
 
     async def subscribe(self, bridge):
-        queue = asyncio.Queue()
-        if bridge and bridge.state_cache:
+        queue = asyncio.Queue(maxsize=100)
+        
+        # 1. Hidratación inmediata: si hay caché, lo metemos en la cola ya formateado
+        if bridge and hasattr(bridge, 'state_cache'):
             for topic, content in bridge.state_cache.items():
-                await queue.put({"event": "update", "data": json.dumps({topic: content})})
-                await asyncio.sleep(0.01)
+                # Formato manual estricto para SSE
+                msg = f"event: initial\ndata: {json.dumps({topic: content})}\n\n"
+                queue.put_nowait(msg)
+
         self.queues.add(queue)
         try:
-            while True: yield await queue.get()
-        finally: self.queues.discard(queue)
+            while True:
+                # 2. Esperar mensaje
+                msg = await queue.get()
+                
+                # Si es un diccionario (viene de broadcast), formatear. Si es string, enviar.
+                if isinstance(msg, dict):
+                    yield f"event: {msg['event']}\ndata: {msg['data']}\n\n"
+                else:
+                    yield msg
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self.queues.discard(queue)
 
     async def broadcast(self, event_type: str, category: str, data: dict):
-        sse_dict = {"event": event_type, "data": json.dumps({category: data})}
+        if not self.queues:
+            return
+            
+        # Pre-formateamos el JSON una vez para todas las colas
+        payload = {
+            "event": event_type, 
+            "data": json.dumps({category: data})
+        }
+        
         for queue in list(self.queues):
-            try: queue.put_nowait(sse_dict)
-            except: continue
+            try:
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                continue
 
 manager = SSEManager()
