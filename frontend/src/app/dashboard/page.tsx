@@ -45,7 +45,7 @@ export default function Page() {
       <div className="grid-stack p-0!" ref={gridRef}>
         
         {/* Fila 1: Leaderboard y Map */}
-        <div className={itemClass} gs-w="7" gs-h="8" gs-x="0" gs-y="0">
+        <div className={itemClass} gs-w="8" gs-h="8" gs-x="0" gs-y="0">
           <div className={contentClass}>
             <div className="card-body p-2 overflow-auto custom-scrollbar">
               <LeaderBoard />
@@ -53,7 +53,7 @@ export default function Page() {
           </div>
         </div>
 
-        {/* <div className={itemClass} gs-w="5" gs-h="8" gs-x="7" gs-y="0">
+        <div className={itemClass} gs-w="4" gs-h="8" gs-x="8" gs-y="0">
           <div className={contentClass}>
             <div className="card-body p-2 overflow-hidden">
               <Map />
@@ -83,7 +83,7 @@ export default function Page() {
               <TrackViolations />
             </div>
           </div>
-        </div> */}
+        </div>
 
       </div>
     </div>
