@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import Note from "@/components/Note";
-import DriverDRS from "@/components/driver/DriverDRS";
+import DriverDRS from "@/components/driver/DriverPit";
 import DriverTire from "@/components/driver/DriverTire";
 import DriverPedals from "@/components/driver/DriverPedals";
 import TemperatureComplication from "@/components/complications/Temperature";

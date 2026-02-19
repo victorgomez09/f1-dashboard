@@ -135,12 +135,10 @@ export default function Sidebar({ connected }: Props) {
 						<h2 className="menu-title">Live Timming</h2>
 
 						<ul>
-
 							<Item item={{ href: "/dashboard/settings", name: "Settings" }} />
-
-							<Item target="_blank" item={{ href: "/schedule", name: "Schedule" }} />
-							<Item target="_blank" item={{ href: "/help", name: "Help" }} />
-							<Item target="_blank" item={{ href: "/", name: "Home" }} />
+							<Item item={{ href: "/schedule", name: "Schedule" }} />
+							<Item item={{ href: "/help", name: "Help" }} />
+							<Item item={{ href: "/", name: "Home" }} />
 						</ul>
 					</li>
 				</ul>

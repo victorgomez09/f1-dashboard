@@ -2,7 +2,6 @@ import asyncio
 from typing import Optional
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from sse_starlette import EventSourceResponse
 from utils.signalr import F1SignalRBridge
 from utils.sse_manager import manager
@@ -27,7 +26,6 @@ async def startup_event():
     f1_bridge.start()
 
 @app.get("/api/realtime")
-async def sse_endpoint(request: Request):
+async def sse_endpoint():
     global f1_bridge
-    # 🚩 CORRECCIÓN: Pasar f1_bridge aquí
     return EventSourceResponse(manager.subscribe(f1_bridge))

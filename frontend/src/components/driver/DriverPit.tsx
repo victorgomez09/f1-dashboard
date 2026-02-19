@@ -7,7 +7,7 @@ type Props = {
 	pitOut: boolean;
 };
 
-export default function DriverDRS({ on, possible, inPit, pitOut }: Props) {
+export default function DriverPit({ on, possible, inPit, pitOut }: Props) {
 	const pit = inPit || pitOut;
 
 	return (
@@ -15,14 +15,14 @@ export default function DriverDRS({ on, possible, inPit, pitOut }: Props) {
 			className={clsx(
 				"text-md inline-flex h-8 w-full items-center justify-center rounded-box border-2 font-mono font-black",
 				{
-					"border-zinc-700 text-zinc-700": !pit && !on && !possible,
-					"border-zinc-400 text-zinc-400": !pit && !on && possible,
-					"border-emerald-500 text-emerald-500": !pit && on,
-					"border-cyan-500 text-cyan-500": pit,
+					"border-base-100 text-base-100": !pit && !on && !possible,
+					"border-base-content text-base-content": !pit && !on && possible,
+					"border-success text-success": !pit && on,
+					"border-info text-info": pit,
 				},
 			)}
 		>
-			{pit ? "PIT" : "DRS"}
+			{pit ? "PIT" : "PIT"}
 		</span>
 	);
 }

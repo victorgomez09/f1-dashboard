@@ -9,7 +9,7 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useDataStore } from "@/stores/useDataStore";
 
 import DriverTag from "./DriverTag";
-import DriverDRS from "./DriverDRS";
+import DriverDRS from "./DriverPit";
 import DriverGap from "./DriverGap";
 import DriverTire from "./DriverTire";
 import DriverMiniSectors from "./DriverMiniSectors";
@@ -57,17 +57,17 @@ export default function Driver({ driver, timingDriver, position }: Props) {
 			layout="position"
 			className={clsx("flex flex-col gap-1 rounded-box p-1.5 select-none", {
 				"opacity-50": timingDriver.KnockedOut || timingDriver.Retired || timingDriver.Stopped,
-				"bg-sky-800/30": favoriteDriver,
-				"bg-violet-800/30": hasFastest,
-				"bg-red-800/30": sessionPart != undefined && inDangerZone(position, sessionPart),
+				"bg-info/15": favoriteDriver,
+				"bg-primary/15": hasFastest,
+				"bg-error/15": sessionPart != undefined && inDangerZone(position, sessionPart),
 			})}
 		>
 			<div
 				className="grid items-center gap-2"
 				style={{
 					gridTemplateColumns: carMetrics
-						? "4.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto 10.5rem"
-						: "4.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto",
+						? "5.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto 10.5rem"
+						: "5.5rem 3.5rem 5.5rem 4rem 5rem 5.5rem auto",
 				}}
 			>
 				<DriverTag className="min-w-full!" short={driver?.Tla} teamColor={driver?.TeamColour} position={position} />

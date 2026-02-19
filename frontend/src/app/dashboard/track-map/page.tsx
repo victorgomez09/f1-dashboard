@@ -5,7 +5,7 @@ import clsx from "clsx";
 
 import Map from "@/components/dashboard/Map";
 import DriverTag from "@/components/driver/DriverTag";
-import DriverDRS from "@/components/driver/DriverDRS";
+import DriverDRS from "@/components/driver/DriverPit";
 import DriverInfo from "@/components/driver/DriverInfo";
 import DriverGap from "@/components/driver/DriverGap";
 import DriverLapTime from "@/components/driver/DriverLapTime";

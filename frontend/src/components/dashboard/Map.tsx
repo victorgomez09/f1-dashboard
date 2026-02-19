@@ -227,8 +227,7 @@ export default function Map({ filter }: Props) {
 			xmlns="http://www.w3.org/2000/svg"
 		>
 			<path
-				className="stroke-gray-800"
-				strokeWidth={300}
+				className="stroke-200 stroke-primary/30"
 				strokeLinejoin="round"
 				fill="transparent"
 				d={`M${points[0].x},${points[0].y} ${points.map((point) => `L${point.x},${point.y}`).join(" ")}`}
@@ -237,8 +236,8 @@ export default function Map({ filter }: Props) {
 			{renderedSectors.map((sector) => {
 				const style = sector.pulse
 					? {
-							animation: `${sector.pulse * 100}ms linear infinite pulse`,
-						}
+						animation: `${sector.pulse * 100}ms linear infinite pulse`,
+					}
 					: {};
 				return (
 					<path
@@ -323,7 +322,7 @@ type CornerNumberProps = {
 
 const CornerNumber: React.FC<CornerNumberProps> = ({ number, x, y }) => {
 	return (
-		<text x={x} y={y} className="fill-zinc-700" fontSize={300} fontWeight="semibold">
+		<text x={x} y={y} className="fill-base-content" fontSize={300} fontWeight="semibold">
 			{number}
 		</text>
 	);
@@ -350,7 +349,7 @@ const CarDot = ({ pos, name, color, favoriteDriver, pit, hidden, rotation, cente
 
 	return (
 		<g
-			className={clsx("fill-zinc-700", { "opacity-30": pit }, { "opacity-0!": hidden })}
+			className={clsx("fill-base-content", { "opacity-30": pit }, { "opacity-0!": hidden })}
 			style={{
 				transition: "all 1s linear",
 				transform,
@@ -372,7 +371,7 @@ const CarDot = ({ pos, name, color, favoriteDriver, pit, hidden, rotation, cente
 			{favoriteDriver && (
 				<circle
 					id={`map.driver.favorite`}
-					className="stroke-sky-400"
+					className="stroke-info"
 					r={180}
 					fill="transparent"
 					strokeWidth={40}
